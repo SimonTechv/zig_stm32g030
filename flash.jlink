@@ -1,0 +1,6 @@
+r
+h
+loadbin zig-out/bin/m0.bin, 0x08000000
+r
+g
+q
