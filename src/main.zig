@@ -9,7 +9,10 @@ comptime {
     _ = @import("vector_table.zig");
 }
 
-const led = gpio.GPIOA.pin(4);
+const cs = gpio.GPIOA.pin(4);
+const mosi = gpio.GPIOA.pin(7);
+const miso = gpio.GPIOA.pin(6);
+const clk = gpio.GPIOA.pin(5);
 
 fn delay(cycles: u32) void {
     for (0..cycles) |_| {
@@ -18,16 +21,34 @@ fn delay(cycles: u32) void {
 }
 
 export fn main() callconv(.c) noreturn {
-    const clk = rcc.RCC;
-    clk.IOPENR.GPIOAEN = true;
 
-    led.init(.{ .mode = .output, .speed = .high });
+    // Enable GPIOA
+    rcc.RCC.IOPENR.GPIOAEN = true;
+    rcc.RCC.APBENR2.SPI1EN = true;
+
+    // GPIO's init
+    cs.init(.{ .mode = .output, .speed = .high });
+    mosi.init(.{ .mode = .alternate_function, .speed = .high, .af = .af0 });
+    miso.init(.{ .mode = .alternate_function, .speed = .high, .af = .af0 });
+    clk.init(.{ .mode = .alternate_function, .speed = .high, .af = .af0 });
+
+    cs.write(true); // CS high
+
+    // SPI periphery init
+    spi.SpiInit(spi.SPI1, .{
+        .mode = .master,
+        .direction = .full_duplex,
+        .baud_rate_div = .div8,
+        .cpol = .idle_low,
+        .cpha = .first_edge,
+        .bit_order = .msb_first,
+        .data_size = .bits_8,
+        .software_nss = true,
+    });
 
     while (true) {
-        delay(200000);
-        led.write(false);
-        delay(200000);
-        led.write(true);
+        delay(1000);
+        _ = spi.TransferByte(spi.SPI1, 0x55);
     }
 }
 

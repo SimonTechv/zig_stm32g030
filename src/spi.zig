@@ -244,3 +244,11 @@ pub fn SpiInit(spi: *volatile SPI_TypeDef, cfg: config) void {
         .SPE = true,
     };
 }
+
+pub fn TransferByte(p: *volatile SPI_TypeDef, byte: u8) u8 {
+    const dr: *volatile u8 = @ptrCast(&p.DR);
+    while (!p.SR.TXE) {} // Wait TX empty
+    dr.* = byte;
+    while (!p.SR.RXNE) {} // Wait RX not empty
+    return dr.*;
+}
