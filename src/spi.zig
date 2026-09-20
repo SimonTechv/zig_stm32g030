@@ -245,10 +245,35 @@ pub fn SpiInit(spi: *volatile SPI_TypeDef, cfg: config) void {
     };
 }
 
-pub fn TransferByte(p: *volatile SPI_TypeDef, byte: u8) u8 {
+pub fn Transfer8(p: *volatile SPI_TypeDef, byte: u8) u8 {
     const dr: *volatile u8 = @ptrCast(&p.DR);
     while (!p.SR.TXE) {} // Wait TX empty
     dr.* = byte;
     while (!p.SR.RXNE) {} // Wait RX not empty
     return dr.*;
+}
+
+pub fn Write8(p: *volatile SPI_TypeDef, buf: []const u8) void {
+    // Transfer slice
+    for (buf) |b| {
+        _ = Transfer8(p, b);
+    }
+    // Wait BSY
+    while (p.SR.BSY) {}
+}
+
+pub fn Transfer9(p: *volatile SPI_TypeDef, byte: u16) u16 {
+    const dr: *volatile u16 = @ptrCast(&p.DR);
+    while (!p.SR.TXE) {} // Wait TX empty
+    dr.* = byte;
+    while (!p.SR.RXNE) {} // Wait RX not empty
+    return dr.*;
+}
+
+pub fn Write9(p: *volatile SPI_TypeDef, is_data: bool, buf: []const u8) void {
+    const prefix: u16 = if (is_data) 0x0100 else 0x0000;
+    for (buf) |b| {
+        _ = Transfer9(p, prefix | @as(u16, b));
+    }
+    while (p.SR.BSY) {}
 }
